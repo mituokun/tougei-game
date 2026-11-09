@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>陶芸ゲーム</title>
+<style>
+:root{--bg:#f4ecdf;--fg:#3b2a20;--card:#fffaf1;--line:#d9c9b0;--accent:#c2562b;--ok:#6a9b4d;--bad:#c2392b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1e1814;--fg:#f0e4d2;--card:#2b231d;--line:#4a3d33}}
+:root[data-theme="dark"]{--bg:#1e1814;--fg:#f0e4d2;--card:#2b231d;--line:#4a3d33}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;display:flex;justify-content:center;min-height:100vh}
+.app{width:100%;max-width:560px;padding:14px;display:flex;flex-direction:column;gap:10px}
+h1{margin:0;font-size:22px;display:flex;justify-content:space-between;align-items:center}
+.chip{font-size:12px;background:var(--accent);color:#fff;padding:3px 10px;border-radius:99px;font-weight:600}
+.msg{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;min-height:42px;line-height:1.45}
+.stage{position:relative}
+canvas{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);touch-action:none;display:block;background:#e9dcc6}
+.gauges{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g{font-size:12px}
+.bar{position:relative;height:14px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:3px}
+.fill{height:100%;width:0;background:var(--accent);transition:width .1s}
+.sweet{position:absolute;top:0;bottom:0;background:rgba(106,155,77,.35);border-left:2px solid var(--ok);border-right:2px solid var(--ok)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:14px;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;font-weight:600}
+button.main{background:var(--accent);color:#fff;border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:default}
+.ov{position:absolute;inset:0;background:rgba(30,20,12,.82);color:#fff;border-radius:12px;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:8px}
+.ov.on{display:flex}
+.ov h2{margin:0;font-size:24px}.ov .sc{font-size:44px;font-weight:800}.ov p{margin:0;font-size:14px;line-height:1.5;max-width:380px}
+.ov small{opacity:.8}
+.rank{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px}.rank h3{margin:0 0 6px;font-size:15px}.rank ol{list-style:none;margin:0;padding:0;font-size:14px;line-height:1.8}.rank li.me{font-weight:700;color:var(--accent)}#rn{font-size:11px;opacity:.7;margin-top:4px}#reg{display:none;gap:6px;margin-top:4px}#reg input{font:inherit;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid #fff4;background:#fff;color:#222;width:140px}
+#rl2{list-style:none;margin:0;padding:0;font-size:14px;line-height:1.9;max-height:290px;overflow-y:auto;width:100%;max-width:400px;text-align:left}#rl2 li.me{color:#ffb27a}#rn2{font-size:11px;opacity:.7}
+</style></head><body>
+<div class="app">
+<h1>🏺 陶芸ゲーム <span class="chip" id="chip">土殺し</span></h1>
+<div class="msg" id="msg"></div>
+<div class="btns" id="tg"></div>
+<div class="stage"><canvas id="c" width="600" height="520"></canvas>
+<div class="ov" id="ov"><h2 id="ot"></h2><div class="sc" id="os"></div><p id="om"></p><small id="od"></small><div id="reg"><input id="nm" maxlength="12" placeholder="名前"><button class="main" id="sub">ランキングに登録</button></div><div class="btns" style="justify-content:center"><button class="main" id="retry">もう一度つくる</button><button id="view">作品を見る</button></div></div><div class="ov" id="rov"><h2>🏆 ランキング</h2><div class="btns" id="tabs2" style="justify-content:center"></div><ol id="rl2"></ol><div id="rn2"></div><div class="btns" style="justify-content:center"><button class="main" id="rretry">もう一度つくる</button><button id="rclose">閉じる</button></div></div></div>
+<div class="gauges">
+<div class="g">水分（緑が適量）<div class="bar"><div class="sweet" style="left:37.5%;width:25%"></div><div class="fill" id="wf" style="background:#3b82c4"></div></div></div>
+<div class="g">ぐらつき（満タンで吹っ飛ぶ）<div class="bar"><div class="fill" id="bf"></div></div></div>
+</div>
+<div class="btns"><button id="water">💧 水をつける (Space)</button><button class="main" id="fire" disabled>🔥 完成！窯で焼く</button><button id="reset">やり直し</button><button id="rk">🏆 ランキング</button></div>
+<div class="rank"><h3>🏆 ランキング TOP10（陶器の種類別）</h3><div class="btns" id="tabs" style="margin-bottom:6px"></div><ol id="rl"></ol><div id="rn"></div></div>
+<div class="g" id="vc" style="text-align:center;opacity:.8"></div>
+</div>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=600,CX=300,BY=440,N=40,LIM=40;
+const $=id=>document.getElementById(id);
+const MSG=["①上のお題（茶碗・壺・花瓶）を選んで、【土殺し】土の上を長押しして「ぐらつき」ゲージを下げよう！",
+"②【穴あけ】土の真ん中を押さえたまま、少しだけ下へドラッグして指を離そう。底に土を残すのがコツ！",
+"③【ひきあげ】緑の点線に壁を合わせよう！壁を押さえて上へドラッグすると高く薄くなり、左右に動かすと膨らむ・すぼまる。"];
+const NAMES=["土殺し","穴あけ","ひきあげ","焼成"];
+let S;
+const BOWL=[[0,23],[.14,23],[.16,27],[.21,35],[.32,46],[.45,60],[.58,72],[.71,77],[.84,79.5],[.92,80],[1,78]];
+function itp(a,u){u=Math.max(0,Math.min(1,u));for(let i=1;i<a.length;i++){if(u<=a[i][0]){const[x0,y0]=a[i-1],[x1,y1]=a[i];return y0+(y1-y0)*(u-x0)/(x1-x0||1)}}return a[a.length-1][1]}
+const TGS=[{k:"bowl",n:"茶碗",e:"🍵",H:150,f:u=>1.4*itp(BOWL,u)},{k:"pot",n:"壺",e:"🏺",H:200,f:u=>38+34*Math.sin(Math.PI*Math.min(1,u)*.92)},{k:"vase",n:"花瓶",e:"💐",H:250,f:u=>30+34*Math.exp(-(((u-.3)/.2)**2))+Math.max(0,u-.8)*60}];
+let TG=0;const tgBox=$('tg');
+TGS.forEach((t,i)=>{const b=document.createElement('button');b.textContent=t.e+t.n;b.onclick=()=>{TG=i;mark();VT=i;markTabs();renderRank()};tgBox.appendChild(b)});
+function mark(){[...tgBox.children].forEach((b,i)=>b.className=i==TG?'main':'')}mark();
+function match(){const s=S,T=tops();let e=0,k=0;const tg=TGS[TG];for(let i=0;i<N;i++){e+=Math.abs(s.o[i]-tg.f(Math.min(1,(BY-T[i])/tg.H)));k++}return k?Math.max(0,1-(e/k)/22):0}
+function reset(){
+ S={o:Array(N).fill(62),n:Array(N).fill(0),V:Array(N).fill(3.5*62*62),floor:N,phase:0,wet:.5,wob:18,ang:0,
+ p:{x:CX,y:300,down:false,vx:0,vy:0,sp:0,px:CX,py:300},over:null,opening:false,fired:false};
+ $('ov').classList.remove('on');$('rov').classList.remove('on');$('fire').disabled=true;ui();
+}
+function hh(i){if(S.cutN&&i<S.cutN)return 0;const a=S.o[i]**2-S.n[i]**2;return Math.min(9,Math.max(.8,S.V[i]/Math.max(a,50)))}
+function tops(){const t=[];let y=BY;for(let i=0;i<N;i++){y-=hh(i);t.push(y)}return t}
+function rowAt(y){const t=tops();for(let i=0;i<N;i++){if(y>=t[i])return i}return N-1}
+function ui(){$('chip').textContent=NAMES[S.phase];$('msg').textContent=S.fired?"焼き上がり…":MSG[S.phase]}
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function fail(t,m){
+ const pw=t.includes("ぶっ飛")?1:.5,st=S,T=tops(),ch=[],cols=[[176,132,98],[150,108,78],[198,152,114]];
+ st.over={t,m};st.gone=true;
+ for(let k=0;k<(pw>.6?80:36);k++){
+  const i=Math.floor(rnd(0,N)),sd=Math.random()<.5?-1:1,a=rnd(.3,1.35),v=rnd(300,950)*pw;
+  ch.push({x:CX+sd*st.o[i]*Math.random(),y:T[i]+rnd(0,6),vx:sd*Math.cos(a)*v+rnd(-80,80),vy:-Math.sin(a)*v,r:rnd(5,22),rot:rnd(0,6),vr:rnd(-9,9),c:cols[k%3]});
+ }
+ const sp=[];if(pw>.6)for(let k=0;k<7;k++)sp.push({x:rnd(50,550),y:rnd(50,380),r:rnd(32,74),delay:rnd(0,.5),dr:rnd(25,70),pts:Array.from({length:10},()=>rnd(.6,1.3))});
+ st.fx={t:0,ch,sp,pw,txt:pw>.6?["ベチャァッ!!","ドッシャーン!!","土が飛んだァ!!"][Math.floor(rnd(0,3))]:"ぐにゃ…"};
+ setTimeout(()=>{if(S===st)show(t,0,m,"")},pw>.6?1900:1100);
+}
+function fxUpd(dt){const f=S.fx;if(!f)return;f.t+=dt;S.ang+=dt*7;
+ if(f.sparks)for(const k of f.sparks){k.x+=k.vx*dt;k.y+=k.vy*dt;k.vy+=500*dt;k.l-=dt}
+ for(const c of f.ch){c.vy+=1500*dt;c.x+=c.vx*dt;c.y+=c.vy*dt;c.rot+=c.vr*dt;if(c.y>BY+70&&c.vy>0){c.y=BY+70;c.vy*=-.3;c.vx*=.6;c.vr*=.5}}}
+function show(t,s,m,d){S.last={score:s,t};$('reg').style.display=Number(s)>0?'flex':'none';$('sub').disabled=false;$('sub').textContent='ランキングに登録';$('ot').textContent=t;$('os').textContent=s?s+"点":"";$('om').textContent=m;$('od').textContent=d||"";$('ov').classList.add('on')}
+function pos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*520/r.height}}
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);const q=pos(e);Object.assign(S.p,q,{down:true})});
+cv.addEventListener('pointermove',e=>{const q=pos(e);S.p.x=q.x;S.p.y=q.y});
+const up=()=>{S.p.down=false;if(S.phase==1&&S.opening){S.opening=false;if(S.floor<N-5){S.phase=2;$('fire').disabled=false;ui()}}};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+function water(){if(S.over||S.fired)return;S.wet=Math.min(1.2,S.wet+.3)}
+$('water').onclick=water;$('reset').onclick=reset;$('retry').onclick=reset;
+addEventListener('keydown',e=>{if(e.code=='Space'){e.preventDefault();water()}});
+$('fire').onclick=fire;
+
+function update(dt){
+ const s=S,p=s.p;s.ang+=dt*7;s.wet=Math.max(0,s.wet-.04*dt);
+ const dry=Math.max(0,.45-s.wet)/.45,soak=Math.max(0,s.wet-.75);
+ p.vx+=((p.x-p.px)/dt-p.vx)*.3;p.vy+=((p.y-p.py)/dt-p.vy)*.3;p.sp=Math.hypot(p.vx,p.vy);p.px=p.x;p.py=p.y;
+ const ex=p.x+Math.sin(s.ang*3.1)*s.wob*.4;
+ if(s.phase==0){
+  if(p.down&&Math.abs(p.x-CX)<100&&p.y<BY)s.wob-=7*dt;
+  s.wob+=(.7+dry*8+soak*20)*dt;
+  if(s.wob<2.5){s.phase=1;ui()}
+ }else if(s.phase==1){
+  if(p.down&&Math.abs(p.x-CX)<34){
+   s.opening=true;const r=rowAt(p.y);
+   if(r<s.floor){s.floor=r}
+   if(s.floor<1){return fail("底が抜けました","穴を深く掘りすぎ。ろくろの上には何も残っていません。")}
+   for(let i=s.floor;i<N;i++)s.n[i]=26;
+   s.wob-=3*dt;
+  }
+  s.wob+=(.35+dry*7+soak*20)*dt;
+ }else if(s.phase==2){
+  let sumT=0,k=0,Ht=BY-tops()[N-1];
+  for(let i=s.floor+1;i<N;i++){sumT+=s.o[i]-s.n[i];k++}
+  const avgT=k?sumT/k:20;
+  if(p.down){
+   const i0=rowAt(p.y),d=Math.abs(ex-CX);
+   for(let j=0;j<s.floor;j++){const w=Math.exp(-(((j-i0)/2.2)**2));if(w<.03||Math.abs(d-s.o[j])>60)continue;s.o[j]=Math.max(14,s.o[j]+(d-s.o[j])*Math.min(1,5*w*dt))}
+   for(let j=s.floor;j<N;j++){
+    const w=Math.exp(-(((j-i0)/2.2)**2));if(w<.03)continue;
+    let c=(s.o[j]+s.n[j])/2,t=s.o[j]-s.n[j];
+    if(Math.abs(d-c)>t/2+60)continue;
+    c+=(d-c)*Math.min(1,5*w*dt);
+    t-=(1.2+Math.max(0,-p.vy)*.04)*w*dt;
+    if(t<1.5)return fail("壁が破れました","薄くしすぎ、または一か所を押さえ続けすぎ。陶芸は「引き際」が大事。");
+    s.n[j]=Math.max(2,c-t/2);s.o[j]=Math.min(150,c+t/2);
+   }
+  }
+  if(soak>0)for(let j=s.floor+1;j<N;j++){const t=s.o[j]-s.n[j],c=(s.o[j]+s.n[j])/2,nt=t-soak*30*dt*(j/N);s.n[j]=Math.max(2,c-nt/2);s.o[j]=c+nt/2;if(nt<2.2)return fail("ドロドロに溶けました","水のつけすぎ。粘土はプールではありません。")}
+  s.wob+=(.2+dry*6+Math.max(0,(Ht-200)/100)*.6+(avgT<7?.8:0)+(p.down?p.sp*.002:0)+soak*20)*dt;
+  s.wob-=(p.down?1.8:.3)*dt;
+ }
+ s.wob=Math.max(0,s.wob);
+ if(s.wob>LIM)fail("土がぶっ飛びました","ぐらつきを放置するとこうなります。教室の壁にも土が付きました。");
+}
+function kilnBoom(cb){const st=S,T=tops(),cy=(BY+T[N-1])/2;st.gone=true;
+ const ch=[],cols=[[201,120,74],[170,90,55],[230,150,100]];
+ for(let k=0;k<60;k++){const i=Math.floor(rnd(0,N)),a=rnd(0,6.283),v=rnd(300,1000);ch.push({x:CX+(Math.random()-.5)*st.o[i]*2,y:T[i],vx:Math.cos(a)*v,vy:Math.sin(a)*v-200,r:rnd(5,16),rot:rnd(0,6),vr:rnd(-12,12),c:cols[k%3]})}
+ const sparks=Array.from({length:80},()=>{const a=rnd(0,6.283),v=rnd(200,950);return{x:CX,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:rnd(.4,1.1)}});
+ st.fx={t:0,ch,sp:[],sparks,boom:true,cy,pw:1,txt:"ドッカーーン!!"};
+ setTimeout(()=>{if(S===st)cb()},2300)}
+function cutOff(){const s=S,f1=Math.min(N-1,s.floor+1),fr=Math.max(22,Math.min(62,s.o[f1]*.82));
+ const setR=(i,o,n)=>{const h=hh(i);s.o[i]=o;s.n[i]=n;s.V[i]=h*(o*o-n*n)};
+ let cn=0,rem=0;for(let i=0;i<s.floor;i++)rem+=hh(i);
+ while(false&&cn<s.floor-1&&rem-hh(cn)>=16){rem-=hh(cn);cn++}
+ s.cutN=cn;for(let i=0;i<cn;i++)s.o[i]=s.o[cn];
+ s.glaze=[[150,190,175],[236,232,222],[196,126,56],[62,96,160],[120,60,50]][Math.floor(rnd(0,5))]}
+function fire(){
+ const s=S;if(s.phase!=2||s.fired)return;s.fired=true;s.ft=0;s.kind=TG;s.p.down=false;
+ const T=tops(),H=BY-T[N-1];let ts=[],kink=0;
+ for(let i=s.floor+1;i<N;i++){ts.push(s.o[i]-s.n[i])}
+ for(let i=s.floor+1;i<N-1;i++)kink+=Math.max(0,Math.abs(s.o[i+1]-s.o[i])-3);
+ const avg=ts.reduce((a,b)=>a+b,0)/ts.length,sd=Math.sqrt(ts.reduce((a,b)=>a+(b-avg)**2,0)/ts.length),mx=Math.max(...ts);
+ let fl=0;for(let i=0;i<=s.floor;i++)fl+=hh(i);
+ const mp=match(),sc=[mp*45,Math.max(0,1-Math.abs(H-TGS[TG].H)/TGS[TG].H)*20,Math.max(0,15-Math.abs(avg-7)*1.2),Math.max(0,10-sd*1.5),Math.max(0,10-s.wob*1.5)];
+ let tot=Math.round(sc.reduce((a,b)=>a+b,0));
+ const d=`目標:${TGS[TG].n} 形${Math.round(mp*100)}% / 高さ${Math.round(H)} / 平均の厚み${avg.toFixed(1)} / ムラ${sd.toFixed(1)} / 底${Math.round(fl)}`;
+ cutOff();ui();draw();
+ let t,m;
+ if(mx>26&&Math.random()<.3){return kilnBoom(()=>show("窯の中で爆発💥","0",`分厚い所(${mx.toFixed(0)}px)に空気が残り、窯が大惨事に。厚みは均一に！`,d))}
+ if(fl<8&&Math.random()<.3){const st2=S;return setTimeout(()=>{if(S===st2)show("底にヒビ…",Math.floor(tot/3),"底が薄く、焼成中にパカッと割れました。",d)},2800)}
+ if(tot>=85){t="人間国宝";m="完璧です。海外のコレクターが探しています。"}
+ else if(tot>=70){t="名工";m="見事な器。味噌汁がおいしく感じます。"}
+ else if(tot>=50){t="民藝品";m="味があります。「味」で押し切れる範囲です。"}
+ else if(tot>=30){t="植木鉢";m="水は漏れません。たぶん。"}
+ else{t="ただの焼いた土";m="これは…灰皿？ いえ、土の記念碑です。"}
+ if(mp<.5)m+=` ただし「${TGS[TG].n}」の形にはなっていません…`;t=TGS[TG].n+"："+t;const st=S;setTimeout(()=>{if(S===st)show(t,tot,m,d)},2800);
+}
+function draw(){
+ const s=S,f=s.fx,T=tops();ctx.save();ctx.clearRect(0,0,W,520);
+ if(f&&f.t<.7){const k=(.7-f.t)*(f.pw>.6?18:6);ctx.translate(rnd(-k,k),rnd(-k,k))}
+ let g=ctx.createLinearGradient(0,0,0,520);g.addColorStop(0,"#f1e6d3");g.addColorStop(1,"#cbb48e");ctx.fillStyle=g;ctx.fillRect(-30,-30,W+60,580);
+ const ft=s.fired&&!s.fx?(s.ft||0):-1,cer=ft>=.9;
+ if(!cer){ctx.fillStyle="#6f5d4d";ctx.beginPath();ctx.ellipse(CX,BY+16,222,54,0,0,7);ctx.fill();
+ ctx.fillStyle="#a8957f";ctx.beginPath();ctx.ellipse(CX,BY+10,212,46,0,0,7);ctx.fill();
+ g=ctx.createRadialGradient(CX-40,BY-6,10,CX,BY,160);g.addColorStop(0,"#aaaab1");g.addColorStop(1,"#6d6d75");
+ ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(CX,BY,152,26,0,0,7);ctx.fill();
+ ctx.strokeStyle="rgba(190,160,120,.55)";ctx.lineWidth=5;ctx.beginPath();ctx.ellipse(CX,BY,146,23,0,0,7);ctx.stroke();
+ ctx.fillStyle="#4a4a52";for(let k=0;k<4;k++){const a=s.ang*.5+k*1.57;ctx.beginPath();ctx.arc(CX+Math.cos(a)*120,BY+Math.sin(a)*15,3,0,7);ctx.fill()}}
+ else{g=ctx.createLinearGradient(0,BY,0,520);g.addColorStop(0,"#c9a273");g.addColorStop(1,"#8d6a43");ctx.fillStyle=g;ctx.fillRect(0,BY,W,120);ctx.fillStyle="#e0bf92";ctx.fillRect(0,BY,W,5);ctx.fillStyle="rgba(50,30,10,.3)";ctx.beginPath();ctx.ellipse(CX,BY+3,Math.max(...s.o)*1.05,9,0,0,7);ctx.fill()}
+ const wb=s.wob,off=i=>wb*(.4+.6*i/N)*Math.sin(s.ang+i*.1),wt=s.fired?1:Math.min(1,s.wet);
+ const base=s.fired?(s.glaze||[201,120,74]):[196-wt*44,172-wt*44,140-wt*38];
+ const col=(m,al)=>`rgba(${base.map(v=>Math.min(255,Math.round(v*m))).join(',')},${al==null?1:al})`;
+ if(!s.gone){
+  const R=Math.max(...s.o),body=()=>{ctx.beginPath();ctx.moveTo(CX-s.o[0]+off(0),BY);for(let i=0;i<N;i++)ctx.lineTo(CX-s.o[i]+off(i),T[i]);for(let i=N-1;i>=0;i--)ctx.lineTo(CX+s.o[i]+off(i),T[i]);ctx.lineTo(CX+s.o[0]+off(0),BY);ctx.ellipse(CX+off(0),BY,s.o[0],s.o[0]*.16,0,0,Math.PI);ctx.closePath()};
+  g=ctx.createLinearGradient(CX-R,0,CX+R,0);g.addColorStop(0,col(.6));g.addColorStop(.22,col(1.1));g.addColorStop(.5,col(.98));g.addColorStop(.85,col(.7));g.addColorStop(1,col(.52));
+  body();ctx.fillStyle=g;ctx.fill();
+  ctx.save();body();ctx.clip();
+  for(let i=1;i<N;i++){ctx.strokeStyle=i%2?"rgba(70,45,25,.17)":"rgba(255,255,255,.22)";ctx.lineWidth=1.3;ctx.beginPath();ctx.ellipse(CX+off(i),T[i],s.o[i],s.o[i]*.16,0,0,Math.PI);ctx.stroke()}
+  ctx.fillStyle=`rgba(255,255,255,${.08+wt*.28})`;ctx.fillRect(CX-R*.55,T[N-1]-10,R*.13,BY-T[N-1]+20);
+  ctx.fillStyle=`rgba(255,255,255,${.05+wt*.12})`;ctx.fillRect(CX-R*.3,T[N-1]-10,R*.05,BY-T[N-1]+20);
+  ctx.restore();
+  ctx.strokeStyle=col(.42);ctx.lineWidth=2;body();ctx.stroke();
+  const i=N-1,ry=s.o[i]*.16,tx=CX+off(i),ty=T[i];
+  ctx.fillStyle=col(1.14);ctx.beginPath();ctx.ellipse(tx,ty,s.o[i],ry,0,0,7);ctx.fill();
+  if(s.floor<N){const ni=s.n[i],nry=ni*.16;g=ctx.createLinearGradient(0,ty-nry,0,ty+nry*1.6);g.addColorStop(0,col(.8));g.addColorStop(1,col(.4));ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(tx,ty+nry*.15,ni,nry*1.15,0,0,7);ctx.fill();ctx.strokeStyle=col(.35);ctx.lineWidth=1.5;ctx.stroke()}
+  ctx.strokeStyle="rgba(255,255,255,.4)";ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(tx,ty,s.o[i],ry,0,Math.PI,2*Math.PI);ctx.stroke();
+  if(!s.fired){ctx.fillStyle="rgba(255,250,240,.6)";ctx.fillRect(10,10,104,150);ctx.fillStyle="#3b2a20";ctx.font="11px sans-serif";ctx.fillText("断面",16,25);
+  let y=150;for(let j=0;j<N;j++){const h=hh(j)*.3;y-=h;ctx.fillStyle=col(.9);if(j<s.floor||s.n[j]<1)ctx.fillRect(62-s.o[j]*.3,y,s.o[j]*.6,h+.5);else{ctx.fillRect(62-s.o[j]*.3,y,(s.o[j]-s.n[j])*.3,h+.5);ctx.fillRect(62+s.n[j]*.3,y,(s.o[j]-s.n[j])*.3,h+.5)}}}
+ }else{ctx.fillStyle="rgba(120,92,66,.9)";ctx.beginPath();ctx.ellipse(CX,BY-2,34,11,0,0,7);ctx.fill()}
+ if(s.phase>=1&&!s.fired&&!s.gone){const tg=TGS[TG];ctx.save();ctx.setLineDash([8,6]);ctx.lineWidth=2.5;ctx.strokeStyle="rgba(40,150,70,.95)";
+  for(const sg of[-1,1]){ctx.beginPath();for(let k=0;k<=24;k++){const u=k/24,x=CX+sg*tg.f(u),y=BY-u*tg.H;k?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}ctx.restore();
+  if(s.phase==2&&!s.over)$('msg').textContent=`お題「${tg.n}」 形の一致度 ${Math.round(match()*100)}% ｜ 点線に壁を合わせて、できたら「焼く」！`}
+ if(ft>=0&&ft<.9&&!s.gone){const wx=CX-170+(ft/.9)*340;ctx.strokeStyle="#f3e7b0";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(CX-190,BY-1);ctx.lineTo(wx,BY-1);ctx.stroke();ctx.fillStyle="#8a5a2b";ctx.fillRect(wx-5,BY-12,10,22)}
+ if(cer&&!s.gone){for(let k=0;k<5;k++){const ph=(ft*1.5+k*.37)%1,x=CX+Math.sin(k*2.3)*s.o[N>>1]*.8,y=T[N-1]+(BY-T[N-1])*((k*.23+.1)%1);ctx.save();ctx.globalAlpha=Math.sin(ph*Math.PI);ctx.fillStyle="#fff";ctx.translate(x,y);ctx.rotate(.78);ctx.fillRect(-1.5,-8*ph-2,3,16*ph+4);ctx.rotate(1.57);ctx.fillRect(-1.5,-8*ph-2,3,16*ph+4);ctx.restore()}}
+ if(0){const p=s.p,dx=.88,dy=.48,L=200;
+  const ln=(a,b,w,c)=>{ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(p.x+dx*a,p.y+dy*a);ctx.lineTo(p.x+dx*b,p.y+dy*b);ctx.stroke()};
+  ln(0,L,36,"rgba(120,70,45,.9)");ln(0,L,31,"#f0c4a2");ln(10,L,9,"#fbdcc4");ln(0,46,32,col(.95,.95));ln(30,52,26,col(.85,.7));
+  ctx.fillStyle="rgba(255,255,255,.35)";ctx.beginPath();ctx.ellipse(p.x+dx*20-4,p.y+dy*20-8,6,3,.5,0,7);ctx.fill()}
+ if(f){
+  if(f.boom){const t=f.t,cy=f.cy,R=60+t*330;
+   if(t<.6){ctx.fillStyle=`rgba(255,240,200,${(1-t/.6)*.85})`;ctx.fillRect(-30,-30,W+60,580)}
+   const gr=ctx.createRadialGradient(CX,cy,0,CX,cy,R);gr.addColorStop(0,`rgba(255,250,200,${Math.max(0,1-t*1.1)})`);gr.addColorStop(.4,`rgba(255,150,40,${Math.max(0,.9-t)})`);gr.addColorStop(1,"rgba(200,40,0,0)");
+   ctx.fillStyle=gr;ctx.beginPath();ctx.arc(CX,cy,R,0,7);ctx.fill();
+   ctx.strokeStyle=`rgba(255,255,255,${Math.max(0,1-t*1.4)})`;ctx.lineWidth=Math.max(.1,10*(1-t));ctx.beginPath();ctx.arc(CX,cy,t*750,0,7);ctx.stroke();
+   for(let k=0;k<6;k++){const a=k*1.05+1;ctx.fillStyle=`rgba(60,50,45,${Math.max(0,.5-t*.3)*Math.min(1,t*4)})`;ctx.beginPath();ctx.arc(CX+Math.cos(a)*t*160,cy-t*(80+k*20)+Math.sin(a)*t*50,30+t*90,0,7);ctx.fill()}}
+  for(const c of f.ch){ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.rot);ctx.fillStyle=`rgb(${c.c.join(',')})`;ctx.strokeStyle="rgba(70,45,25,.6)";ctx.lineWidth=1.5;ctx.beginPath();ctx.ellipse(0,0,c.r,c.r*.72,0,0,7);ctx.fill();ctx.stroke();ctx.fillStyle="rgba(255,255,255,.28)";ctx.beginPath();ctx.ellipse(-c.r*.3,-c.r*.25,c.r*.35,c.r*.2,0,0,7);ctx.fill();ctx.restore()}
+  if(f.sparks)for(const k of f.sparks){if(k.l<=0)continue;ctx.strokeStyle=`rgba(255,${Math.round(150+k.l*90)},60,${Math.min(1,k.l*2)})`;ctx.lineWidth=3;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(k.x,k.y);ctx.lineTo(k.x-k.vx*.03,k.y-k.vy*.03);ctx.stroke()}
+  for(const q of f.sp){const e=f.t-q.delay;if(e<=0)continue;const r=q.r*Math.min(1,e*6);
+   ctx.fillStyle="rgba(138,108,80,.94)";ctx.beginPath();q.pts.forEach((m,k)=>{const a=k/q.pts.length*6.283,x=q.x+Math.cos(a)*r*m,y=q.y+Math.sin(a)*r*m;k?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fill();
+   ctx.strokeStyle="rgba(138,108,80,.94)";ctx.lineWidth=9;ctx.lineCap="round";const dl=Math.max(0,(e-.25)*q.dr);for(let k=-1;k<=1;k++){ctx.beginPath();ctx.moveTo(q.x+k*r*.4,q.y+r*.5);ctx.lineTo(q.x+k*r*.4,q.y+r*.5+dl*(1+k*k*.4));ctx.stroke()}
+   ctx.fillStyle="rgba(255,255,255,.22)";ctx.beginPath();ctx.ellipse(q.x-r*.3,q.y-r*.3,r*.3,r*.15,-.5,0,7);ctx.fill()}
+  if(f.t>.05){const k=1+Math.max(0,.35-f.t)*2.5;ctx.save();ctx.translate(CX,120);ctx.rotate(-.1);ctx.scale(k,k);ctx.font="900 42px sans-serif";ctx.textAlign="center";ctx.lineJoin="round";ctx.lineWidth=10;ctx.strokeStyle="#fff";ctx.strokeText(f.txt,0,0);ctx.fillStyle="#d6402a";ctx.fillText(f.txt,0,0);ctx.restore()}
+ }
+ ctx.restore();
+ $('wf').style.width=(s.wet/1.2*100)+"%";$('bf').style.width=Math.min(100,s.wob/LIM*100)+"%";$('bf').style.background=s.wob>LIM*.6?"var(--bad)":"var(--accent)";
+}
+function drawOld(){
+ const s=S;ctx.clearRect(0,0,W,520);
+ ctx.fillStyle="#d8c7a8";ctx.fillRect(0,BY+22,W,100);
+ ctx.fillStyle="#6b6b72";ctx.beginPath();ctx.ellipse(CX,BY+6,150,22,0,0,7);ctx.fill();
+ ctx.fillStyle="#8a8a92";ctx.beginPath();ctx.ellipse(CX,BY,150,20,0,0,7);ctx.fill();
+ ctx.fillStyle="#555";for(let k=0;k<4;k++){const a=s.ang*.5+k*1.57;ctx.beginPath();ctx.arc(CX+Math.cos(a)*120,BY+Math.sin(a)*14,3,0,7);ctx.fill()}
+ const T=tops(),wobAmt=s.wob;
+ const off=i=>wobAmt*(.4+.6*i/N)*Math.sin(s.ang+i*.1);
+ const wetT=Math.min(1,s.wet);
+ const a=s.fired?[196,98,52]:[Math.round(176-wetT*40),Math.round(132-wetT*38),Math.round(98-wetT*30)];
+ const g=ctx.createLinearGradient(CX-100,0,CX+100,0);
+ const col=(f)=>`rgb(${a.map(v=>Math.round(v*f)).join(',')})`;
+ g.addColorStop(0,col(.7));g.addColorStop(.4,col(1.1));g.addColorStop(1,col(.75));
+ ctx.beginPath();
+ for(let i=0;i<N;i++){const x=CX-s.o[i]+off(i);i?ctx.lineTo(x,T[i]):ctx.moveTo(CX-s.o[0]+off(0),BY),ctx.lineTo(x,T[i])}
+ for(let i=N-1;i>=0;i--)ctx.lineTo(CX+s.o[i]+off(i),T[i]);
+ ctx.lineTo(CX+s.o[0]+off(0),BY);ctx.closePath();ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=col(.5);ctx.lineWidth=2;ctx.stroke();
+ if(s.floor<N){
+  ctx.beginPath();ctx.moveTo(CX-s.n[s.floor]+off(s.floor),T[s.floor]);
+  for(let i=s.floor;i<N;i++)ctx.lineTo(CX-s.n[i]+off(i),T[i]);
+  for(let i=N-1;i>=s.floor;i--)ctx.lineTo(CX+s.n[i]+off(i),T[i]);
+  ctx.closePath();ctx.fillStyle=s.fired?"#4a2a1a":"#3b2a20";ctx.fill();
+ }
+ if(!s.fired){ctx.strokeStyle="rgba(255,255,255,.18)";ctx.lineWidth=1;for(let i=2;i<N;i+=3){ctx.beginPath();ctx.moveTo(CX-s.o[i]+off(i)+4,T[i]);ctx.lineTo(CX+s.o[i]+off(i)-4,T[i]);ctx.stroke()}}
+ if(s.p.down&&!s.fired){ctx.fillStyle="rgba(255,220,190,.85)";ctx.beginPath();ctx.arc(s.p.x,s.p.y,13,0,7);ctx.fill();ctx.strokeStyle="#a06a4a";ctx.lineWidth=2;ctx.stroke()}
+ $('wf').style.width=(s.wet/1.2*100)+"%";$('bf').style.width=Math.min(100,s.wob/LIM*100)+"%";
+ $('bf').style.background=s.wob>LIM*.6?"var(--bad)":"var(--accent)";
+}
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(!S.over&&!S.fired)update(dt);else if(S.fx)fxUpd(dt);else{S.ang+=dt*1.5;if(S.fired)S.ft=(S.ft||0)+dt}draw();requestAnimationFrame(loop)}
+let DB=null,UID=null;
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+function localRows(k){try{return JSON.parse(LS.get('potrank_'+k)||'[]')}catch(e){return[]}}
+let RKS={bowl:[],pot:[],vase:[]},VT=0,RNOTE='';
+const tabBoxes=[$('tabs'),$('tabs2')];
+TGS.forEach((t,i)=>tabBoxes.forEach(bx=>{const b=document.createElement('button');b.textContent=t.e+t.n;b.onclick=()=>{VT=i;markTabs();renderRank()};bx.appendChild(b)}));
+function markTabs(){tabBoxes.forEach(bx=>[...bx.children].forEach((b,i)=>b.className=i==VT?'main':''))}markTabs();
+function renderRank(note){if(typeof note==='string')RNOTE=note;const rows=RKS[TGS[VT].k]||[];drawRank($('rl'),rows.slice(0,10));drawRank($('rl2'),rows);$('rn').textContent=RNOTE;$('rn2').textContent=RNOTE}
+function drawRank(ol,rows){ol.textContent='';if(!rows.length){const li=document.createElement('li');li.textContent='まだ記録がありません。一番乗りを狙おう！';ol.appendChild(li)}
+ rows.forEach((r,i)=>{const li=document.createElement('li');li.textContent=`${i<3?['🥇','🥈','🥉'][i]:(i+1)+'.'} ${r.name} — ${r.score}点（${r.title}）`;if(r.id&&r.id===UID)li.className='me';ol.appendChild(li)})}
+async function initVisits(db,uid){
+ try{const ref=db.collection('visitors').doc(uid),cur=await ref.get();await ref.set({n:(cur.exists?Number(cur.data().n)||0:0)+1,last:Date.now()})}catch(e){}
+ try{db.collection('visitors').limit(1000).onSnapshot(snap=>{let v=0;snap.docs.forEach(d=>{v+=Number(d.data().n)||0});$('vc').textContent=`👀 訪問者 ${snap.size}人 ／ 累計 ${v}回`},()=>{})}catch(e){}}
+async function initRank(){
+ $('nm').value=LS.get('potname')||'';
+ TGS.forEach(t=>RKS[t.k]=localRows(t.k));renderRank('この端末の記録（共有ランキングに接続中…）');
+ try{if(!(window.claude&&window.claude.use))return;const [db,user]=await Promise.all([claude.use('db'),claude.use('user')]);if(!db||!user)return;
+  DB=db;UID=await user.id();initVisits(db,UID);
+  TGS.forEach(t=>db.collection(t.k).orderBy('score','desc').limit(50).onSnapshot(snap=>{RKS[t.k]=snap.docs.map(d=>({id:d.id,...d.data()}));renderRank('みんなのランキング（陶器の種類ごと・1人1記録・ベスト更新のみ）')},()=>{}));
+ }catch(e){}}
+$('view').onclick=()=>$('ov').classList.remove('on');
+$('rk').onclick=()=>$('rov').classList.add('on');$('rclose').onclick=()=>$('rov').classList.remove('on');$('rretry').onclick=reset;
+$('sub').onclick=async()=>{const L=S.last;if(!L)return;const nm=($('nm').value.trim()||'名無し').slice(0,12);LS.set('potname',nm);
+ const row={name:nm,score:Number(L.score),title:String(L.t).slice(0,30),ts:Date.now()};$('sub').disabled=true;
+ const kk=TGS[S.kind!=null?S.kind:TG].k;let a=localRows(kk);a.push(row);a.sort((x,y)=>y.score-x.score);a=a.slice(0,10);LS.set('potrank_'+kk,JSON.stringify(a));
+ if(DB&&UID){try{const ref=DB.collection(kk).doc(UID),cur=await ref.get();if(!cur.exists||(Number(cur.data().score)||0)<row.score)await ref.set(row);$('sub').textContent='登録した！';VT=TGS.findIndex(t=>t.k==kk);markTabs();renderRank();$('ov').classList.remove('on');$('rov').classList.add('on')}catch(e){$('sub').textContent='登録失敗（端末には保存）'}}
+ else{RKS[kk]=a;VT=TGS.findIndex(t=>t.k==kk);markTabs();renderRank('この端末の記録（共有ランキングは使えません）');$('sub').textContent='端末に保存した';$('ov').classList.remove('on');$('rov').classList.add('on')}};
+reset();initRank();requestAnimationFrame(loop);
+</script></body></html>
